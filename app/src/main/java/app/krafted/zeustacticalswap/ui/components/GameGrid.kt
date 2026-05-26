@@ -1,15 +1,17 @@
 package app.krafted.zeustacticalswap.ui.components
 
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.dp
 import app.krafted.zeustacticalswap.game.GridEngine
 import app.krafted.zeustacticalswap.game.TileState
 
@@ -21,31 +23,39 @@ fun GameGrid(
     onTileTap: (row: Int, col: Int) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Column(
+    BoxWithConstraints(
         modifier = modifier
             .fillMaxWidth()
-            .aspectRatio(1f),
-        verticalArrangement = Arrangement.spacedBy(2.dp)
+            .aspectRatio(1f)
     ) {
+        val cellSize = maxWidth / 8
+
         grid.forEachIndexed { row, tiles ->
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(1f),
-                horizontalArrangement = Arrangement.spacedBy(2.dp)
-            ) {
-                tiles.forEachIndexed { col, tile ->
-                    key(tile.id) {
-                        TileCell(
-                            tile = tile,
-                            isSelected = selectedTile == (row to col),
-                            isInvalidShake = (row to col) in invalidSwapCells,
-                            onClick = { onTileTap(row, col) },
-                            modifier = Modifier
-                                .weight(1f)
-                                .aspectRatio(1f)
-                        )
-                    }
+            tiles.forEachIndexed { col, tile ->
+                key(tile.id) {
+                    val targetX = cellSize * col
+                    val targetY = cellSize * row
+
+                    val animatedX by animateDpAsState(
+                        targetValue = targetX,
+                        animationSpec = spring(dampingRatio = 0.8f, stiffness = 300f),
+                        label = "tileX"
+                    )
+                    val animatedY by animateDpAsState(
+                        targetValue = targetY,
+                        animationSpec = spring(dampingRatio = 0.8f, stiffness = 300f),
+                        label = "tileY"
+                    )
+
+                    TileCell(
+                        tile = tile,
+                        isSelected = selectedTile == (row to col),
+                        isInvalidShake = (row to col) in invalidSwapCells,
+                        onClick = { onTileTap(row, col) },
+                        modifier = Modifier
+                            .size(cellSize)
+                            .offset(x = animatedX, y = animatedY)
+                    )
                 }
             }
         }

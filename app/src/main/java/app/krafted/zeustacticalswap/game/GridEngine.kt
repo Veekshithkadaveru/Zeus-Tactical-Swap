@@ -1,11 +1,12 @@
 package app.krafted.zeustacticalswap.game
 
+import java.util.concurrent.atomic.AtomicInteger
 import kotlin.random.Random
 
 object GridEngine {
-    private var nextTileId = 1
+    private val nextTileId = AtomicInteger(1)
 
-    private fun getNextId(): Int = nextTileId++
+    private fun getNextId(): Int = nextTileId.getAndIncrement()
 
     private val spawnableSymbols = Symbol.values().filter { it != Symbol.SKULL }
 
@@ -16,20 +17,21 @@ object GridEngine {
     }
 
     fun makeGrid(size: Int = 8): List<List<TileState>> {
-        val grid = MutableList(size) { MutableList(size) { makeTile(Symbol.LIGHTNING) } }
+        val grid = MutableList(size) { MutableList<TileState?>(size) { null } }
         for (r in 0 until size) {
             for (c in 0 until size) {
                 var s: Symbol
                 do {
                     s = randomSymbol()
                 } while (
-                    (c >= 2 && grid[r][c - 1].symbol == s && grid[r][c - 2].symbol == s) ||
-                    (r >= 2 && grid[r - 1][c].symbol == s && grid[r - 2][c].symbol == s)
+                    (c >= 2 && grid[r][c - 1]?.symbol == s && grid[r][c - 2]?.symbol == s) ||
+                    (r >= 2 && grid[r - 1][c]?.symbol == s && grid[r - 2][c]?.symbol == s)
                 )
                 grid[r][c] = makeTile(s)
             }
         }
-        return grid
+        @Suppress("UNCHECKED_CAST")
+        return grid.map { it.toList() } as List<List<TileState>>
     }
 
     fun isAdjacent(a: Pair<Int, Int>, b: Pair<Int, Int>): Boolean {
@@ -43,6 +45,12 @@ object GridEngine {
         a: Pair<Int, Int>,
         b: Pair<Int, Int>
     ): List<List<TileState>> {
+        val size = grid.size
+        if (a.first !in 0 until size || a.second !in 0 until size ||
+            b.first !in 0 until size || b.second !in 0 until size
+        ) {
+            return grid
+        }
         return grid.mapIndexed { r, row ->
             row.mapIndexed { c, tile ->
                 when {
@@ -84,7 +92,11 @@ object GridEngine {
                     newGrid[r][c] = makeTile(randomSymbol(), isNew = true)
                     newCells.add(Pair(r, c))
                 } else {
-                    newGrid[r][c] = remaining[r - emptyCount].copy(isNew = false)
+                    newGrid[r][c] = remaining[r - emptyCount].copy(
+                        isNew = false,
+                        isSelected = false,
+                        isMatched = false
+                    )
                 }
             }
         }

@@ -1,10 +1,11 @@
 package app.krafted.zeustacticalswap.ui.components
 
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.keyframes
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
@@ -28,6 +29,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
@@ -65,7 +67,9 @@ fun TileCell(
         }
     }
 
-    val dropOffsetY = remember(tile.id) { Animatable(if (tile.isNew) -200f else 0f) }
+    val density = LocalDensity.current
+    val dropStartOffsetPx = remember { with(density) { -80.dp.toPx() } }
+    val dropOffsetY = remember(tile.id) { Animatable(if (tile.isNew) dropStartOffsetPx else 0f) }
     LaunchedEffect(tile.id) {
         if (tile.isNew) {
             dropOffsetY.animateTo(
@@ -75,21 +79,44 @@ fun TileCell(
         }
     }
 
-    val shakeOffsetX by animateFloatAsState(
-        targetValue = if (isInvalidShake) 12f else 0f,
-        animationSpec = spring(dampingRatio = 0.2f, stiffness = 1000f),
-        label = "shake"
-    )
-
-    val pulseTransition = rememberInfiniteTransition(label = "pulse")
-    val pulseScale by pulseTransition.animateFloat(
-        initialValue = 1f,
-        targetValue = if (isSelected && !isSkull) 1.1f else 1f,
-        animationSpec = infiniteRepeatable(tween(450)),
-        label = "pulseScale"
-    )
+    val shakeOffsetX = remember { Animatable(0f) }
+    LaunchedEffect(isInvalidShake) {
+        if (isInvalidShake) {
+            try {
+                shakeOffsetX.animateTo(
+                    targetValue = 0f,
+                    animationSpec = keyframes {
+                        durationMillis = 300
+                        12f at 50
+                        -12f at 100
+                        8f at 150
+                        -8f at 200
+                        4f at 250
+                        0f at 300
+                    }
+                )
+            } finally {
+                shakeOffsetX.snapTo(0f)
+            }
+        }
+    }
 
     val selected = isSelected && !isSkull
+    val pulseScale = if (selected) {
+        val pulseTransition = rememberInfiniteTransition(label = "pulse")
+        val scale by pulseTransition.animateFloat(
+            initialValue = 1.0f,
+            targetValue = 1.1f,
+            animationSpec = infiniteRepeatable(
+                animation = tween(450),
+                repeatMode = RepeatMode.Reverse
+            ),
+            label = "pulseScale"
+        )
+        scale
+    } else {
+        1.0f
+    }
 
     Image(
         painter = painterResource(tile.symbol.drawableRes),
@@ -99,7 +126,7 @@ fun TileCell(
         modifier = modifier
             .aspectRatio(1f)
             .offset {
-                IntOffset(shakeOffsetX.roundToInt(), dropOffsetY.value.roundToInt())
+                IntOffset(shakeOffsetX.value.roundToInt(), dropOffsetY.value.roundToInt())
             }
             .graphicsLayer {
                 val s = matchScale.value * pulseScale

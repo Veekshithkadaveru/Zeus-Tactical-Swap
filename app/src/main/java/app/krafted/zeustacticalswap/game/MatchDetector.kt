@@ -61,8 +61,13 @@ object MatchDetector {
         for (match in matches) {
             val cells = match.cells.filter { it !in claimed }
             if (cells.isEmpty()) continue
-            claimed.addAll(cells)
-            result.add(if (cells.size == match.cells.size) match else match.copy(cells = cells))
+            if (cells.size < 3) {
+                claimed.addAll(match.cells)
+                result.add(match)
+            } else {
+                claimed.addAll(cells)
+                result.add(if (cells.size == match.cells.size) match else match.copy(cells = cells))
+            }
         }
         return result
     }
