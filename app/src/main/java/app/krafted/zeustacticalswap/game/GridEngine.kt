@@ -38,7 +38,11 @@ object GridEngine {
         return (dr == 1 && dc == 0) || (dr == 0 && dc == 1)
     }
 
-    fun swap(grid: List<List<TileState>>, a: Pair<Int, Int>, b: Pair<Int, Int>): List<List<TileState>> {
+    fun swap(
+        grid: List<List<TileState>>,
+        a: Pair<Int, Int>,
+        b: Pair<Int, Int>
+    ): List<List<TileState>> {
         return grid.mapIndexed { r, row ->
             row.mapIndexed { c, tile ->
                 when {
@@ -48,5 +52,42 @@ object GridEngine {
                 }
             }
         }
+    }
+
+    fun clearMatches(
+        grid: List<List<TileState>>,
+        matchedCells: Set<Pair<Int, Int>>
+    ): List<List<TileState>> {
+        return grid.mapIndexed { r, row ->
+            row.mapIndexed { c, tile ->
+                if (Pair(r, c) in matchedCells) tile.copy(isMatched = true) else tile
+            }
+        }
+    }
+
+    data class DropResult(
+        val grid: List<List<TileState>>,
+        val newCells: Set<Pair<Int, Int>>
+    )
+
+    fun dropTiles(grid: List<List<TileState>>): DropResult {
+        val size = grid.size
+        val newGrid = MutableList(size) { r -> MutableList(size) { c -> grid[r][c] } }
+        val newCells = mutableSetOf<Pair<Int, Int>>()
+        for (c in 0 until size) {
+            val remaining = (0 until size)
+                .map { r -> grid[r][c] }
+                .filter { !it.isMatched }
+            val emptyCount = size - remaining.size
+            for (r in 0 until size) {
+                if (r < emptyCount) {
+                    newGrid[r][c] = makeTile(randomSymbol(), isNew = true)
+                    newCells.add(Pair(r, c))
+                } else {
+                    newGrid[r][c] = remaining[r - emptyCount].copy(isNew = false)
+                }
+            }
+        }
+        return DropResult(newGrid.map { it.toList() }, newCells)
     }
 }

@@ -52,6 +52,18 @@ object MatchDetector {
             }
         }
 
-        return matches
+        return deduplicate(matches)
+    }
+
+    private fun deduplicate(matches: List<Match>): List<Match> {
+        val claimed = mutableSetOf<Pair<Int, Int>>()
+        val result = mutableListOf<Match>()
+        for (match in matches) {
+            val cells = match.cells.filter { it !in claimed }
+            if (cells.isEmpty()) continue
+            claimed.addAll(cells)
+            result.add(if (cells.size == match.cells.size) match else match.copy(cells = cells))
+        }
+        return result
     }
 }
