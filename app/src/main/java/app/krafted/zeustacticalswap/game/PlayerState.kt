@@ -30,7 +30,7 @@ data class PlayerState(
         val newCharges = chargeCount + count
         return if (newCharges >= 3) {
             copy(
-                chargeCount = 0,
+                chargeCount = newCharges % 3,
                 criticalActive = true,
                 criticalTurnsLeft = maxOf(criticalTurnsLeft, 2)
             )

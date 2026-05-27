@@ -1,7 +1,9 @@
 package app.krafted.zeustacticalswap.viewmodel
 
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import app.krafted.zeustacticalswap.data.db.BossProgressRepository
 import app.krafted.zeustacticalswap.game.BossAI
 import app.krafted.zeustacticalswap.game.BossAttackResult
 import app.krafted.zeustacticalswap.game.BossId
@@ -51,15 +53,50 @@ data class BattleUiState(
     val isPlayerDefeated: Boolean = false,
     val currentBossIndex: Int = 0,
     val defeatedBosses: List<Int> = emptyList(),
+    val bestClearTimes: Map<BossId, String> = emptyMap(),
     val phase: TurnPhase = TurnPhase.PLAYER_INPUT
 )
 
-class BattleViewModel : ViewModel() {
+class BattleViewModel(private val repository: BossProgressRepository) : ViewModel() {
 
     private val bossOrder = BossId.values().toList()
+    private var battleStartTime: Long = 0L
 
     private val _uiState = MutableStateFlow(newBattleState(0))
     val uiState: StateFlow<BattleUiState> = _uiState.asStateFlow()
+
+    init {
+        viewModelScope.launch {
+            repository.allRecords.collect { records ->
+                val defeated = records.filter { it.defeated }.map { record ->
+                    BossId.values().indexOfFirst { it.name == record.bossId }
+                }.filter { it != -1 }
+
+                val times = records.mapNotNull { record ->
+                    val bossId = BossId.values().firstOrNull { it.name == record.bossId }
+                        ?: return@mapNotNull null
+                    val timeStr = record.bestClearTimeMillis?.let { millis ->
+                        val totalSecs = millis / 1000
+                        val mins = totalSecs / 60
+                        val secs = totalSecs % 60
+                        String.format("%02d:%02d", mins, secs)
+                    } ?: "--:--"
+                    bossId to timeStr
+                }.toMap()
+
+                _uiState.update {
+                    it.copy(
+                        defeatedBosses = defeated,
+                        bestClearTimes = times
+                    )
+                }
+            }
+        }
+    }
+
+    fun startBattle() {
+        battleStartTime = System.currentTimeMillis()
+    }
 
     private fun newBattleState(bossIndex: Int): BattleUiState {
         val boss = BossState.forBoss(bossOrder[bossIndex])
@@ -68,6 +105,27 @@ class BattleViewModel : ViewModel() {
             boss = boss,
             currentBossIndex = bossIndex
         )
+    }
+
+    fun loadBoss(bossIndex: Int) {
+        val boss = BossState.forBoss(bossOrder[bossIndex])
+        _uiState.update {
+            it.copy(
+                grid = GridEngine.makeGrid(),
+                player = PlayerState(maxHp = it.player.maxHp, currentHp = it.player.maxHp),
+                boss = boss,
+                currentBossIndex = bossIndex,
+                isBossDefeated = false,
+                isPlayerDefeated = false,
+                phase = TurnPhase.PLAYER_INPUT,
+                isPlayerTurn = true,
+                lastActionText = "Tap two adjacent tiles to swap",
+                cascadeCount = 0,
+                matchedCells = emptySet(),
+                newCells = emptySet(),
+                swappingPair = null
+            )
+        }
     }
 
     fun onTileTapped(row: Int, col: Int) {
@@ -207,8 +265,68 @@ class BattleViewModel : ViewModel() {
                 _uiState.update {
                     it.copy(grid = specialGrid, lastActionText = describeSpecial(special))
                 }
+                delay(300L)
+
+                if (special is BossSpecialResult.Cyclone) {
+                    val specialCascade = CascadeProcessor.process(specialGrid)
+                    if (specialCascade.steps.isNotEmpty()) {
+                        val actionSummary = StringBuilder()
+                        specialCascade.steps.forEachIndexed { index, step ->
+                            val matchedCells = step.matches.flatMap { it.cells }.toSet()
+                            _uiState.update {
+                                it.copy(
+                                    matchedCells = matchedCells,
+                                    cascadeCount = index,
+                                    phase = TurnPhase.RESOLVING_MATCHES,
+                                    lastActionText = describeMatches(
+                                        step.matches,
+                                        step.cascadeMultiplier
+                                    )
+                                )
+                            }
+                            delay(400L)
+
+                            val results = CombatResolver.resolveAllMatches(
+                                step.matches,
+                                criticalActive = player.criticalActive,
+                                cascadeMultiplier = step.cascadeMultiplier
+                            )
+                            val applied = CombatResolver.applyCombatResults(results, player, boss)
+                            player = applied.first
+                            boss = applied.second
+                            if (actionSummary.isNotEmpty()) actionSummary.append(" → ")
+                            actionSummary.append(summarizeResults(results))
+
+                            _uiState.update {
+                                it.copy(
+                                    grid = step.gridAfter,
+                                    matchedCells = emptySet(),
+                                    newCells = step.newCells,
+                                    player = player,
+                                    boss = boss,
+                                    cascadeCount = index,
+                                    phase = TurnPhase.CASCADE_CHECK
+                                )
+                            }
+                            delay(300L)
+                        }
+
+                        _uiState.update {
+                            it.copy(
+                                grid = specialCascade.finalGrid,
+                                newCells = emptySet(),
+                                player = player,
+                                boss = boss,
+                                phase = TurnPhase.APPLYING_COMBAT,
+                                lastActionText = if (actionSummary.isNotEmpty()) actionSummary.toString() else it.lastActionText
+                            )
+                        }
+                        delay(600L)
+                    }
+                }
+            } else {
+                delay(300L)
             }
-            delay(300L)
 
             _uiState.update { it.copy(phase = TurnPhase.STATUS_TICK) }
             val (tickedBoss, poisonDamage) = boss.tickStatusEffects()
@@ -249,6 +367,10 @@ class BattleViewModel : ViewModel() {
 
     private fun onBossDefeated(player: PlayerState, boss: BossState) {
         val index = _uiState.value.currentBossIndex
+        val elapsed = if (battleStartTime > 0L) System.currentTimeMillis() - battleStartTime else 0L
+        viewModelScope.launch {
+            repository.markDefeated(boss.id, elapsed)
+        }
         _uiState.update {
             it.copy(
                 player = player,
@@ -270,7 +392,13 @@ class BattleViewModel : ViewModel() {
         _uiState.update {
             BattleUiState(
                 grid = GridEngine.makeGrid(),
-                player = it.player,
+                player = it.player.copy(
+                    currentHp = it.player.maxHp,
+                    shieldHp = 0,
+                    chargeCount = 0,
+                    criticalActive = false,
+                    criticalTurnsLeft = 0
+                ),
                 boss = nextBoss,
                 currentBossIndex = nextIndex,
                 defeatedBosses = it.defeatedBosses
@@ -333,5 +461,15 @@ class BattleViewModel : ViewModel() {
             is BossSpecialResult.Corruption -> "Corruption spawns ${special.cells.size} skulls"
             BossSpecialResult.None -> ""
         }
+    }
+
+    companion object {
+        fun provideFactory(repository: BossProgressRepository): ViewModelProvider.Factory =
+            object : ViewModelProvider.Factory {
+                @Suppress("UNCHECKED_CAST")
+                override fun <T : ViewModel> create(modelClass: Class<T>): T {
+                    return BattleViewModel(repository) as T
+                }
+            }
     }
 }

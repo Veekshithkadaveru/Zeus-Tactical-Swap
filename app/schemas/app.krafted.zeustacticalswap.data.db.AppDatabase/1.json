@@ -1,0 +1,52 @@
+{
+  "formatVersion": 1,
+  "database": {
+    "version": 1,
+    "identityHash": "c90a36c14c9c0ad631dff56c5ce6159f",
+    "entities": [
+      {
+        "tableName": "boss_records",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`bossId` TEXT NOT NULL, `defeated` INTEGER NOT NULL, `bestClearTimeMillis` INTEGER, `lastClearedAt` INTEGER, PRIMARY KEY(`bossId`))",
+        "fields": [
+          {
+            "fieldPath": "bossId",
+            "columnName": "bossId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "defeated",
+            "columnName": "defeated",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "bestClearTimeMillis",
+            "columnName": "bestClearTimeMillis",
+            "affinity": "INTEGER",
+            "notNull": false
+          },
+          {
+            "fieldPath": "lastClearedAt",
+            "columnName": "lastClearedAt",
+            "affinity": "INTEGER",
+            "notNull": false
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "bossId"
+          ]
+        },
+        "indices": [],
+        "foreignKeys": []
+      }
+    ],
+    "views": [],
+    "setupQueries": [
+      "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'c90a36c14c9c0ad631dff56c5ce6159f')"
+    ]
+  }
+}

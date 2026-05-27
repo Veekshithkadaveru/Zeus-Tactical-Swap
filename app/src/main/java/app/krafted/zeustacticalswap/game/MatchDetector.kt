@@ -56,19 +56,25 @@ object MatchDetector {
     }
 
     private fun deduplicate(matches: List<Match>): List<Match> {
-        val claimed = mutableSetOf<Pair<Int, Int>>()
-        val result = mutableListOf<Match>()
-        for (match in matches) {
-            val cells = match.cells.filter { it !in claimed }
-            if (cells.isEmpty()) continue
-            if (cells.size < 3) {
-                claimed.addAll(match.cells)
-                result.add(match)
-            } else {
-                claimed.addAll(cells)
-                result.add(if (cells.size == match.cells.size) match else match.copy(cells = cells))
-            }
+        val merged = mutableListOf<Match>()
+        val remaining = matches.toMutableList()
+        while (remaining.isNotEmpty()) {
+            var current = remaining.removeAt(0)
+            var mergedAny: Boolean
+            do {
+                mergedAny = false
+                val iterator = remaining.iterator()
+                while (iterator.hasNext()) {
+                    val other = iterator.next()
+                    if (current.symbol == other.symbol && current.cells.any { it in other.cells }) {
+                        current = Match(current.symbol, (current.cells + other.cells).distinct())
+                        iterator.remove()
+                        mergedAny = true
+                    }
+                }
+            } while (mergedAny)
+            merged.add(current)
         }
-        return result
+        return merged
     }
 }

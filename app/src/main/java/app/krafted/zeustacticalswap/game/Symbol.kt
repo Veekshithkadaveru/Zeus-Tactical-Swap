@@ -10,5 +10,5 @@ enum class Symbol(val drawableRes: Int, val label: String) {
     LAUREL(R.drawable.zeus_sym_5, "CRITICAL"),
     AMPHORA(R.drawable.zeus_sym_6, "POISON"),
     MEDUSA(R.drawable.zeus_sym_7, "PETRIFY"),
-    SKULL(R.drawable.zeus_sym_6, "CURSED")
+    SKULL(R.drawable.zeus_sym_skull, "CURSED")
 }

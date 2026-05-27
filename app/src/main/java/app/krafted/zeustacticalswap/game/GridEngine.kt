@@ -17,21 +17,20 @@ object GridEngine {
     }
 
     fun makeGrid(size: Int = 8): List<List<TileState>> {
-        val grid = MutableList(size) { MutableList<TileState?>(size) { null } }
+        val grid = MutableList(size) { MutableList(size) { makeTile(spawnableSymbols[0]) } }
         for (r in 0 until size) {
             for (c in 0 until size) {
                 var s: Symbol
                 do {
                     s = randomSymbol()
                 } while (
-                    (c >= 2 && grid[r][c - 1]?.symbol == s && grid[r][c - 2]?.symbol == s) ||
-                    (r >= 2 && grid[r - 1][c]?.symbol == s && grid[r - 2][c]?.symbol == s)
+                    (c >= 2 && grid[r][c - 1].symbol == s && grid[r][c - 2].symbol == s) ||
+                    (r >= 2 && grid[r - 1][c].symbol == s && grid[r - 2][c].symbol == s)
                 )
                 grid[r][c] = makeTile(s)
             }
         }
-        @Suppress("UNCHECKED_CAST")
-        return grid.map { it.toList() } as List<List<TileState>>
+        return grid.map { it.toList() }
     }
 
     fun isAdjacent(a: Pair<Int, Int>, b: Pair<Int, Int>): Boolean {
