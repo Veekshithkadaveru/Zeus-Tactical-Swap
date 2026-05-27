@@ -6,6 +6,7 @@ import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -30,6 +31,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
@@ -96,12 +98,24 @@ fun PlayerPanel(player: PlayerState, modifier: Modifier = Modifier) {
 
             Spacer(Modifier.height(6.dp))
 
+            val shieldRingScale by animateFloatAsState(
+                targetValue = if (player.shieldHp > 0) 1f else 0f,
+                animationSpec = spring(stiffness = 500f),
+                label = "shieldRing"
+            )
+
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(14.dp)
+                    .scale(scaleX = 1f, scaleY = 1f + shieldRingScale * 0.18f)
                     .clip(RoundedCornerShape(7.dp))
                     .background(TrackColour)
+                    .border(
+                        width = (2.5f * shieldRingScale).dp,
+                        color = ShieldColour.copy(alpha = shieldRingScale * 0.9f),
+                        shape = RoundedCornerShape(7.dp)
+                    )
             ) {
                 Box(
                     modifier = Modifier
