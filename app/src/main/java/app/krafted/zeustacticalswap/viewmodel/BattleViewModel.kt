@@ -101,7 +101,7 @@ class BattleViewModel(private val repository: BossProgressRepository) : ViewMode
     private fun newBattleState(bossIndex: Int): BattleUiState {
         val boss = BossState.forBoss(bossOrder[bossIndex])
         return BattleUiState(
-            grid = GridEngine.makeGrid(),
+            grid = GridEngine.makePlayableGrid(),
             boss = boss,
             currentBossIndex = bossIndex
         )
@@ -111,7 +111,7 @@ class BattleViewModel(private val repository: BossProgressRepository) : ViewMode
         val boss = BossState.forBoss(bossOrder[bossIndex])
         _uiState.update {
             it.copy(
-                grid = GridEngine.makeGrid(),
+                grid = GridEngine.makePlayableGrid(),
                 player = PlayerState(maxHp = it.player.maxHp, currentHp = it.player.maxHp),
                 boss = boss,
                 currentBossIndex = bossIndex,
@@ -359,6 +359,22 @@ class BattleViewModel(private val repository: BossProgressRepository) : ViewMode
                 return@launch
             }
 
+            var currentGrid = _uiState.value.grid
+            while (!MatchDetector.hasPossibleMoves(currentGrid) && player.isAlive && !boss.isDefeated) {
+                _uiState.update {
+                    it.copy(lastActionText = "No moves left! Shuffling grid...")
+                }
+                delay(1200L)
+                currentGrid = GridEngine.shufflePlayableGrid(currentGrid)
+                _uiState.update {
+                    it.copy(
+                        grid = currentGrid,
+                        lastActionText = "Grid shuffled!"
+                    )
+                }
+                delay(800L)
+            }
+
             _uiState.update {
                 it.copy(isPlayerTurn = true, phase = TurnPhase.PLAYER_INPUT)
             }
@@ -391,7 +407,7 @@ class BattleViewModel(private val repository: BossProgressRepository) : ViewMode
         val nextBoss = BossState.forBoss(bossOrder[nextIndex])
         _uiState.update {
             BattleUiState(
-                grid = GridEngine.makeGrid(),
+                grid = GridEngine.makePlayableGrid(),
                 player = it.player.copy(
                     currentHp = it.player.maxHp,
                     shieldHp = 0,

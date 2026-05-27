@@ -1,105 +1,113 @@
 package app.krafted.zeustacticalswap.ui.components
 
 import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.material3.MaterialTheme
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.compose.material3.Text
+import app.krafted.zeustacticalswap.ui.theme.Zeus
 
-private val AttackRed = Color(0xFFDC2626)
-private val HealGreen = Color(0xFF4ADE80)
-private val ElectricBlue = Color(0xFF3B82F6)
+enum class FlashKind { ATTACK, HEAL, SHIELD, CRIT, POISON, PETRIFY }
 
 @Composable
 fun CombatEffectsOverlay(
-    attackFlash: Boolean,
-    healFlash: Boolean,
-    cascadeLevel: Int,
+    flash: FlashKind?,
+    cascadeCount: Int,
     modifier: Modifier = Modifier
 ) {
-    val attackAlpha by animateFloatAsState(
-        targetValue = if (attackFlash) 0.55f else 0f,
-        animationSpec = tween(durationMillis = 300),
-        label = "attackFlash"
-    )
-    val healAlpha by animateFloatAsState(
-        targetValue = if (healFlash) 0.4f else 0f,
-        animationSpec = tween(durationMillis = 300),
-        label = "healFlash"
-    )
-
-    val cascadeAlpha = remember { Animatable(0f) }
-    LaunchedEffect(cascadeLevel) {
-        if (cascadeLevel > 0) {
-            val peak = (0.2f + cascadeLevel * 0.18f).coerceAtMost(0.8f)
-            cascadeAlpha.snapTo(peak)
-            cascadeAlpha.animateTo(0f, animationSpec = tween(durationMillis = 200))
+    val flashAlpha = remember { Animatable(0f) }
+    LaunchedEffect(flash) {
+        if (flash != null) {
+            flashAlpha.snapTo(0f)
+            flashAlpha.animateTo(1f, androidx.compose.animation.core.tween(90))
+            flashAlpha.animateTo(0f, androidx.compose.animation.core.tween(400))
+        } else {
+            flashAlpha.snapTo(0f)
         }
     }
 
     Box(modifier = modifier.fillMaxSize()) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .alpha(attackAlpha)
-                .background(
-                    Brush.radialGradient(
-                        colors = listOf(Color.Transparent, AttackRed),
-                        radius = 1400f
-                    )
-                )
-        )
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .alpha(healAlpha)
-                .background(
-                    Brush.verticalGradient(
-                        colors = listOf(HealGreen, Color.Transparent, HealGreen)
-                    )
-                )
-        )
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .alpha(cascadeAlpha.value)
-                .background(
-                    Brush.linearGradient(
-                        colors = listOf(ElectricBlue, Color.Transparent, ElectricBlue),
-                        start = Offset.Zero,
-                        end = Offset.Infinite
-                    )
-                )
-        )
+        if (flash != null && flashAlpha.value > 0f) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .alpha(flashAlpha.value)
+                    .background(flashBrush(flash))
+            )
+        }
+
+        if (cascadeCount > 1) {
+            ComboPill(count = cascadeCount, modifier = Modifier.align(Alignment.TopCenter).padding(top = 96.dp))
+        }
     }
 }
 
-@Preview(showBackground = true, backgroundColor = 0xFF111827, widthDp = 320, heightDp = 480)
+private fun flashBrush(kind: FlashKind): Brush = when (kind) {
+    FlashKind.ATTACK -> Brush.radialGradient(
+        colorStops = arrayOf(
+            0.3f to Color.Transparent,
+            0.8f to Color(0xFFFF3C3C).copy(alpha = 0.55f),
+            1f to Color(0xFF780000).copy(alpha = 0.85f)
+        ),
+        center = Offset.Unspecified
+    )
+    FlashKind.HEAL -> Brush.radialGradient(
+        colorStops = arrayOf(0f to Color(0xFF78FFA0).copy(alpha = 0.45f), 0.65f to Color.Transparent)
+    )
+    FlashKind.SHIELD -> Brush.radialGradient(
+        colorStops = arrayOf(0f to Color(0xFF78C8FF).copy(alpha = 0.5f), 0.65f to Color.Transparent)
+    )
+    FlashKind.CRIT -> Brush.radialGradient(
+        colorStops = arrayOf(0f to Color(0xFFFFE082).copy(alpha = 0.6f), 0.65f to Color.Transparent)
+    )
+    FlashKind.POISON -> Brush.radialGradient(
+        colorStops = arrayOf(0f to Color(0xFF9BE23A).copy(alpha = 0.4f), 0.6f to Color.Transparent)
+    )
+    FlashKind.PETRIFY -> Brush.radialGradient(
+        colorStops = arrayOf(0f to Color(0xFFC8C8C8).copy(alpha = 0.4f), 0.6f to Color.Transparent)
+    )
+}
+
 @Composable
-private fun CombatEffectsOverlayPreview() {
-    MaterialTheme {
-        Box(
-            Modifier
-                .fillMaxSize()
-                .background(Color(0xFF111827))
-        ) {
-            CombatEffectsOverlay(
-                attackFlash = true,
-                healFlash = false,
-                cascadeLevel = 3
-            )
-        }
+private fun ComboPill(count: Int, modifier: Modifier = Modifier) {
+    val pop = remember { Animatable(0.4f) }
+    LaunchedEffect(count) {
+        pop.snapTo(0.4f)
+        pop.animateTo(1.2f, androidx.compose.animation.core.tween(240))
+        pop.animateTo(1f, androidx.compose.animation.core.tween(360))
+    }
+    Box(
+        modifier = modifier
+            .scale(pop.value)
+            .clip(RoundedCornerShape(100.dp))
+            .background(Zeus.goldFillBrush, RoundedCornerShape(100.dp))
+            .border(1.dp, Zeus.GoldEdge, RoundedCornerShape(100.dp))
+            .padding(horizontal = 12.dp, vertical = 4.dp)
+    ) {
+        Text(
+            text = "COMBO ×$count",
+            color = Zeus.ButtonInk,
+            fontFamily = Zeus.Display,
+            fontWeight = FontWeight.Black,
+            fontSize = 14.sp,
+            letterSpacing = 1.4.sp
+        )
     }
 }

@@ -55,6 +55,31 @@ object MatchDetector {
         return deduplicate(matches)
     }
 
+    fun hasPossibleMoves(grid: List<List<TileState>>): Boolean {
+        val size = grid.size
+        for (r in 0 until size) {
+            for (c in 0 until size) {
+                if (c < size - 1) {
+                    if (grid[r][c].symbol != Symbol.SKULL && grid[r][c + 1].symbol != Symbol.SKULL) {
+                        val swapped = GridEngine.swap(grid, Pair(r, c), Pair(r, c + 1))
+                        if (findAllMatches(swapped).isNotEmpty()) {
+                            return true
+                        }
+                    }
+                }
+                if (r < size - 1) {
+                    if (grid[r][c].symbol != Symbol.SKULL && grid[r + 1][c].symbol != Symbol.SKULL) {
+                        val swapped = GridEngine.swap(grid, Pair(r, c), Pair(r + 1, c))
+                        if (findAllMatches(swapped).isNotEmpty()) {
+                            return true
+                        }
+                    }
+                }
+            }
+        }
+        return false
+    }
+
     private fun deduplicate(matches: List<Match>): List<Match> {
         val merged = mutableListOf<Match>()
         val remaining = matches.toMutableList()
@@ -78,3 +103,4 @@ object MatchDetector {
         return merged
     }
 }
+

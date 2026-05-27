@@ -1,6 +1,5 @@
 package app.krafted.zeustacticalswap.ui
 
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -22,6 +21,10 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -30,25 +33,18 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.krafted.zeustacticalswap.game.BossId
-
-private val Gold = Color(0xFFE7B549)
-private val GoldBright = Color(0xFFFFE49A)
-private val GoldDeep = Color(0xFFA8761F)
-private val GoldEdge = Color(0xFF6E4811)
-private val Crimson = Color(0xFFD24747)
-private val Emerald = Color(0xFF4FD49A)
-private val Ink = Color(0xFFEDE7D6)
-private val InkDim = Color(0xFFB8AE97)
-private val InkMute = Color(0xFF7A745F)
-private val Night = Color(0xFF04050F)
-private val PanelBg = Color(0xCC0B0D18)
-private val PanelBorder = Color(0x40E7B549)
+import app.krafted.zeustacticalswap.ui.components.RulesDialog
+import app.krafted.zeustacticalswap.ui.theme.ChipTone
+import app.krafted.zeustacticalswap.ui.theme.GoldRule
+import app.krafted.zeustacticalswap.ui.theme.Zeus
+import app.krafted.zeustacticalswap.ui.theme.ZeusChip
+import app.krafted.zeustacticalswap.ui.theme.zeusPanel
 
 private enum class LockState { COMPLETE, OPEN, LOCKED }
 
@@ -72,6 +68,11 @@ fun HomeScreen(
     onLeaderboardClick: () -> Unit
 ) {
     val bosses = BossId.values()
+    var showRules by remember { mutableStateOf(false) }
+
+    if (showRules) {
+        RulesDialog(onDismiss = { showRules = false })
+    }
 
     fun lockState(index: Int): LockState = when {
         defeatedBosses.contains(index) -> LockState.COMPLETE
@@ -81,7 +82,7 @@ fun HomeScreen(
 
     Box(Modifier
         .fillMaxSize()
-        .background(Night)) {
+        .background(Zeus.Night)) {
         Image(
             painter = painterResource(app.krafted.zeustacticalswap.R.drawable.zeus_back_2),
             contentDescription = null,
@@ -95,7 +96,7 @@ fun HomeScreen(
                 .fillMaxSize()
                 .background(
                     Brush.verticalGradient(
-                        listOf(Color.Transparent, Night.copy(alpha = 0.85f))
+                        listOf(Color.Transparent, Zeus.Night.copy(alpha = 0.85f))
                     )
                 )
         )
@@ -106,7 +107,10 @@ fun HomeScreen(
                 .verticalScroll(rememberScrollState())
                 .padding(start = 18.dp, end = 18.dp, top = 54.dp, bottom = 24.dp)
         ) {
-            Header(onLeaderboardClick)
+            Header(
+                onLeaderboardClick = onLeaderboardClick,
+                onRulesClick = { showRules = true }
+            )
             Spacer(Modifier.height(18.dp))
             RunSummary(
                 clearedCount = defeatedBosses.size,
@@ -127,21 +131,21 @@ fun HomeScreen(
             Spacer(Modifier.height(18.dp))
             Text(
                 "HOME · LEADERBOARD · ABOUT",
-                color = InkMute,
-                fontFamily = FontFamily.Monospace,
-                fontSize = 9.sp,
-                letterSpacing = 3.sp,
+                style = Zeus.monoLabel(9, Zeus.InkMute, tracking = 0.3),
                 modifier = Modifier
                     .fillMaxWidth()
                     .clickable { onLeaderboardClick() },
-                textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                textAlign = TextAlign.Center
             )
         }
     }
 }
 
 @Composable
-private fun Header(onLeaderboardClick: () -> Unit) {
+private fun Header(
+    onLeaderboardClick: () -> Unit,
+    onRulesClick: () -> Unit
+) {
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceBetween,
@@ -150,30 +154,39 @@ private fun Header(onLeaderboardClick: () -> Unit) {
         Column {
             Text(
                 "OLYMPIAN TRIALS",
-                color = InkMute,
-                fontWeight = FontWeight.Bold,
-                fontSize = 9.sp,
-                letterSpacing = 3.2.sp
+                style = Zeus.monoLabel(9, Zeus.InkMute, tracking = 0.35)
             )
             Spacer(Modifier.height(4.dp))
             Text(
                 "Choose Your Trial",
-                color = Gold,
-                fontWeight = FontWeight.Black,
-                fontSize = 28.sp,
-                letterSpacing = 1.sp,
+                style = Zeus.goldHeading(28),
                 lineHeight = 30.sp
             )
         }
-        Box(
-            modifier = Modifier
-                .size(36.dp)
-                .clip(CircleShape)
-                .border(1.dp, Gold.copy(alpha = 0.45f), CircleShape)
-                .clickable { onLeaderboardClick() },
-            contentAlignment = Alignment.Center
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Text("⚙", color = InkDim, fontSize = 16.sp)
+            Box(
+                modifier = Modifier
+                    .size(36.dp)
+                    .clip(CircleShape)
+                    .border(1.dp, Zeus.Gold.copy(alpha = 0.45f), CircleShape)
+                    .clickable { onRulesClick() },
+                contentAlignment = Alignment.Center
+            ) {
+                Text("?", color = Zeus.InkDim, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+            }
+            Box(
+                modifier = Modifier
+                    .size(36.dp)
+                    .clip(CircleShape)
+                    .border(1.dp, Zeus.Gold.copy(alpha = 0.45f), CircleShape)
+                    .clickable { onLeaderboardClick() },
+                contentAlignment = Alignment.Center
+            ) {
+                Text("🏆", color = Zeus.InkDim, fontSize = 16.sp)
+            }
         }
     }
 }
@@ -188,9 +201,7 @@ private fun RunSummary(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(12.dp))
-            .background(PanelBg)
-            .border(1.dp, PanelBorder, RoundedCornerShape(12.dp))
+            .zeusPanel(corner = 12)
             .padding(horizontal = 14.dp, vertical = 12.dp)
     ) {
         Row(
@@ -198,40 +209,24 @@ private fun RunSummary(
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             Column {
-                Text(
-                    "CURRENT RUN",
-                    color = InkMute,
-                    fontFamily = FontFamily.Monospace,
-                    fontSize = 9.sp,
-                    letterSpacing = 1.8.sp
-                )
+                Text("CURRENT RUN", style = Zeus.monoLabel(9, Zeus.InkMute, tracking = 0.2))
                 Spacer(Modifier.height(4.dp))
                 Row(verticalAlignment = Alignment.Bottom) {
                     Text(
                         "$clearedCount/3 ",
-                        color = Ink,
+                        color = Zeus.Ink,
                         fontWeight = FontWeight.Bold,
                         fontSize = 16.sp
                     )
-                    Text(
-                        "trials cleared",
-                        color = InkMute,
-                        fontSize = 14.sp
-                    )
+                    Text("trials cleared", color = Zeus.InkMute, fontSize = 14.sp)
                 }
             }
             Column(horizontalAlignment = Alignment.End) {
-                Text(
-                    "HERO HP",
-                    color = InkMute,
-                    fontFamily = FontFamily.Monospace,
-                    fontSize = 9.sp,
-                    letterSpacing = 1.8.sp
-                )
+                Text("HERO HP", style = Zeus.monoLabel(9, Zeus.InkMute, tracking = 0.2))
                 Spacer(Modifier.height(4.dp))
                 Text(
                     "$currentHp/$maxHp",
-                    color = Gold,
+                    color = Zeus.Gold,
                     fontWeight = FontWeight.Bold,
                     fontSize = 16.sp
                 )
@@ -246,19 +241,8 @@ private fun RunSummary(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
-                    "BEST CLEAR",
-                    color = InkMute,
-                    fontFamily = FontFamily.Monospace,
-                    fontSize = 10.sp,
-                    letterSpacing = 1.6.sp
-                )
-                Text(
-                    bestClearTime,
-                    color = Ink,
-                    fontFamily = FontFamily.Monospace,
-                    fontSize = 11.sp
-                )
+                Text("BEST CLEAR", style = Zeus.monoLabel(10, Zeus.InkMute, tracking = 0.18))
+                Text(bestClearTime, style = Zeus.monoLabel(11, Zeus.Ink, tracking = 0.0))
             }
         }
     }
@@ -278,15 +262,16 @@ private fun ArenaCard(
         .fillMaxWidth()
         .heightIn(min = 124.dp)
         .clip(RoundedCornerShape(14.dp))
+        .border(1.dp, Zeus.Gold.copy(alpha = 0.45f), RoundedCornerShape(14.dp))
     if (!locked) cardModifier = cardModifier.clickable(onClick = onClick)
 
-    Box(modifier = cardModifier.alpha(if (locked) 0.45f else 1f)) {
+    Box(modifier = cardModifier.alpha(if (locked) 0.55f else 1f)) {
         Image(
             painter = painterResource(boss.backgroundRes),
             contentDescription = null,
             modifier = Modifier
                 .matchParentSize()
-                .alpha(if (state == LockState.COMPLETE) 0.45f else 0.85f),
+                .alpha(if (state == LockState.COMPLETE) 0.5f else 0.85f),
             contentScale = ContentScale.Crop
         )
         Box(
@@ -311,34 +296,24 @@ private fun ArenaCard(
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     boss.displayName,
-                    color = Gold,
-                    fontWeight = FontWeight.Black,
-                    fontSize = 18.sp,
+                    style = Zeus.goldHeading(18),
                     lineHeight = 18.sp
                 )
                 Spacer(Modifier.height(4.dp))
                 Text(
                     "${boss.maxHp} HP · ${boss.minAttack}-${boss.maxAttack} DMG",
-                    color = InkMute,
-                    fontFamily = FontFamily.Monospace,
-                    fontSize = 9.sp,
-                    letterSpacing = 1.8.sp
+                    style = Zeus.monoLabel(9, Zeus.InkMute, tracking = 0.18)
                 )
                 Spacer(Modifier.height(6.dp))
                 Row {
                     Text(
                         "${lore.ability}. ",
-                        color = Ink,
+                        color = Zeus.Ink,
                         fontWeight = FontWeight.Bold,
                         fontSize = 11.sp,
                         lineHeight = 15.sp
                     )
-                    Text(
-                        lore.hint,
-                        color = InkDim,
-                        fontSize = 11.sp,
-                        lineHeight = 15.sp
-                    )
+                    Text(lore.hint, color = Zeus.InkDim, fontSize = 11.sp, lineHeight = 15.sp)
                 }
                 Spacer(Modifier.height(8.dp))
                 StatusChip(state)
@@ -353,13 +328,14 @@ private fun Medallion(numeral: String) {
         modifier = Modifier
             .size(42.dp)
             .clip(CircleShape)
-            .background(Brush.verticalGradient(listOf(GoldBright, GoldDeep)))
-            .border(2.dp, GoldEdge, CircleShape),
+            .background(Brush.verticalGradient(listOf(Zeus.GoldHi, Zeus.GoldDeep)))
+            .border(2.dp, Zeus.GoldEdge, CircleShape),
         contentAlignment = Alignment.Center
     ) {
         Text(
             numeral,
-            color = Color(0xFF1A1303),
+            color = Zeus.ButtonInk,
+            fontFamily = Zeus.Display,
             fontWeight = FontWeight.Black,
             fontSize = 18.sp
         )
@@ -368,39 +344,12 @@ private fun Medallion(numeral: String) {
 
 @Composable
 private fun StatusChip(state: LockState) {
-    val (label, color) = when (state) {
-        LockState.COMPLETE -> "✓ DEFEATED" to Emerald
-        LockState.OPEN -> "⚔ READY" to Gold
-        LockState.LOCKED -> "🔒 LOCKED" to InkMute
+    val (label, tone) = when (state) {
+        LockState.COMPLETE -> "✓ DEFEATED" to ChipTone.COMPLETE
+        LockState.OPEN -> "⚔ READY" to ChipTone.LIVE
+        LockState.LOCKED -> "🔒 LOCKED" to ChipTone.NEUTRAL
     }
-    Box(
-        modifier = Modifier
-            .clip(RoundedCornerShape(100.dp))
-            .border(BorderStroke(1.dp, color.copy(alpha = 0.5f)), RoundedCornerShape(100.dp))
-            .padding(horizontal = 10.dp, vertical = 4.dp)
-    ) {
-        Text(
-            label,
-            color = color,
-            fontFamily = FontFamily.Monospace,
-            fontSize = 10.sp,
-            letterSpacing = 1.2.sp,
-            fontWeight = FontWeight.Bold
-        )
-    }
-}
-
-@Composable
-private fun GoldRule(modifier: Modifier = Modifier) {
-    Box(
-        modifier
-            .height(1.dp)
-            .background(
-                Brush.horizontalGradient(
-                    listOf(Color.Transparent, GoldBright.copy(alpha = 0.6f), Color.Transparent)
-                )
-            )
-    )
+    ZeusChip(label = label, tone = tone)
 }
 
 @Preview

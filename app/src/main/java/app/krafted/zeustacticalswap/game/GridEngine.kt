@@ -101,4 +101,46 @@ object GridEngine {
         }
         return DropResult(newGrid.map { it.toList() }, newCells)
     }
+
+    fun makePlayableGrid(size: Int = 8): List<List<TileState>> {
+        var grid: List<List<TileState>>
+        do {
+            grid = makeGrid(size)
+        } while (!MatchDetector.hasPossibleMoves(grid))
+        return grid
+    }
+
+    fun shufflePlayableGrid(grid: List<List<TileState>>): List<List<TileState>> {
+        val size = grid.size
+        val skulls = grid.map { row -> row.map { it.symbol == Symbol.SKULL } }
+        val nonSkullSymbols = grid.flatten().filter { it.symbol != Symbol.SKULL }.map { it.symbol }
+
+        var attempts = 0
+        var shuffledGrid: List<List<TileState>>
+        do {
+            val shuffledSymbols = nonSkullSymbols.shuffled()
+            var index = 0
+            shuffledGrid = grid.mapIndexed { r, row ->
+                row.mapIndexed { c, tile ->
+                    if (skulls[r][c]) {
+                        tile
+                    } else {
+                        tile.copy(
+                            symbol = shuffledSymbols[index++],
+                            isSelected = false,
+                            isMatched = false,
+                            isNew = false
+                        )
+                    }
+                }
+            }
+            attempts++
+            if (attempts > 100) {
+                return makePlayableGrid(size)
+            }
+        } while (MatchDetector.findAllMatches(shuffledGrid).isNotEmpty() || !MatchDetector.hasPossibleMoves(shuffledGrid))
+
+        return shuffledGrid
+    }
 }
+
