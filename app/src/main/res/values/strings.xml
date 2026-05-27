@@ -1,3 +1,12 @@
 <resources>
     <string name="app_name">Zeus Tactical Swap</string>
+    <string name="defeat">DEFEAT</string>
+    <string name="current_run">CURRENT RUN</string>
+    <string name="trials_cleared">trials cleared</string>
+    <string name="hero_hp">HERO HP</string>
+    <string name="best_clear">BEST CLEAR</string>
+    <string name="reward">REWARD</string>
+    <string name="full_hp_restored">Full HP restored</string>
+    <string name="hero">HERO</string>
+    <string name="charges">CHARGES</string>
 </resources>

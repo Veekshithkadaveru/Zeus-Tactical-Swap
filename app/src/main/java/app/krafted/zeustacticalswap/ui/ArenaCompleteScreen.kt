@@ -43,12 +43,14 @@ import app.krafted.zeustacticalswap.R
 import app.krafted.zeustacticalswap.ui.theme.GoldButton
 import app.krafted.zeustacticalswap.ui.theme.GoldRule
 import app.krafted.zeustacticalswap.ui.theme.Zeus
+import androidx.activity.compose.BackHandler
 
 @Composable
 fun ArenaCompleteScreen(
     onHome: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    BackHandler(onBack = onHome)
     var revealed by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) { revealed = true }
 

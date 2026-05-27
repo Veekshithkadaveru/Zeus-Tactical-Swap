@@ -1,5 +1,7 @@
 package app.krafted.zeustacticalswap.game
 
+import android.util.Log
+
 data class CascadeStep(
     val matches: List<Match>,
     val cascadeMultiplier: Float,
@@ -38,6 +40,10 @@ object CascadeProcessor {
             cascadeMultiplier *= 1.5f
             iterations++
             matches = MatchDetector.findAllMatches(current)
+        }
+
+        if (iterations >= MAX_ITERATIONS && matches.isNotEmpty()) {
+            Log.w("CascadeProcessor", "Max cascade iterations ($MAX_ITERATIONS) reached! Cascade truncated to prevent infinite loops.")
         }
 
         return CascadeResult(steps, current)

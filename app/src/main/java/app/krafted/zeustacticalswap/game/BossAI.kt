@@ -60,7 +60,7 @@ object BossAI {
             BossId.KRONOS -> Pair(grid, BossSpecialResult.None)
 
             BossId.TYPHON -> {
-                if (boss.turnCount > 0 && boss.turnCount % boss.id.specialInterval == 0) {
+                if (boss.id.specialInterval > 0 && boss.turnCount > 0 && boss.turnCount % boss.id.specialInterval == 0) {
                     val row = Random.nextInt(grid.size)
                     val cleared = grid.mapIndexed { r, rowTiles ->
                         if (r == row) {
@@ -77,7 +77,7 @@ object BossAI {
             }
 
             BossId.HADES -> {
-                if (boss.turnCount > 0 && boss.turnCount % boss.id.specialInterval == 0) {
+                if (boss.id.specialInterval > 0 && boss.turnCount > 0 && boss.turnCount % boss.id.specialInterval == 0) {
                     val size = grid.size
                     val candidates = mutableListOf<Pair<Int, Int>>()
                     for (r in 0 until size) {

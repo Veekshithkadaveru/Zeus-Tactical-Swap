@@ -3,7 +3,11 @@ package app.krafted.zeustacticalswap.game
 data class Match(
     val symbol: Symbol,
     val cells: List<Pair<Int, Int>>
-)
+) {
+    init {
+        require(cells.isNotEmpty()) { "Match cells list cannot be empty" }
+    }
+}
 
 object MatchDetector {
     fun findAllMatches(grid: List<List<TileState>>): List<Match> {
@@ -12,7 +16,7 @@ object MatchDetector {
 
         for (r in 0 until size) {
             var c = 0
-            while (c < size - 2) {
+            while (c < size) {
                 val symbol = grid[r][c].symbol
                 if (symbol == Symbol.SKULL) {
                     c++
@@ -33,7 +37,7 @@ object MatchDetector {
 
         for (c in 0 until size) {
             var r = 0
-            while (r < size - 2) {
+            while (r < size) {
                 val symbol = grid[r][c].symbol
                 if (symbol == Symbol.SKULL) {
                     r++
@@ -53,31 +57,6 @@ object MatchDetector {
         }
 
         return deduplicate(matches)
-    }
-
-    fun hasPossibleMoves(grid: List<List<TileState>>): Boolean {
-        val size = grid.size
-        for (r in 0 until size) {
-            for (c in 0 until size) {
-                if (c < size - 1) {
-                    if (grid[r][c].symbol != Symbol.SKULL && grid[r][c + 1].symbol != Symbol.SKULL) {
-                        val swapped = GridEngine.swap(grid, Pair(r, c), Pair(r, c + 1))
-                        if (findAllMatches(swapped).isNotEmpty()) {
-                            return true
-                        }
-                    }
-                }
-                if (r < size - 1) {
-                    if (grid[r][c].symbol != Symbol.SKULL && grid[r + 1][c].symbol != Symbol.SKULL) {
-                        val swapped = GridEngine.swap(grid, Pair(r, c), Pair(r + 1, c))
-                        if (findAllMatches(swapped).isNotEmpty()) {
-                            return true
-                        }
-                    }
-                }
-            }
-        }
-        return false
     }
 
     private fun deduplicate(matches: List<Match>): List<Match> {
@@ -103,4 +82,3 @@ object MatchDetector {
         return merged
     }
 }
-

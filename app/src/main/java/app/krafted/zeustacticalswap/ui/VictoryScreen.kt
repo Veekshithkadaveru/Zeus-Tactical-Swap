@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Text
+import androidx.compose.ui.res.stringResource
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -95,7 +96,7 @@ fun VictoryScreen(boss: BossId, isFinalBoss: Boolean, onContinue: () -> Unit) {
             GoldRule(Modifier.width(200.dp))
             Spacer(Modifier.height(22.dp))
 
-            Text("REWARD", style = Zeus.monoLabel(10, Zeus.InkDim, tracking = 0.22))
+            Text(stringResource(app.krafted.zeustacticalswap.R.string.reward), style = Zeus.monoLabel(10, Zeus.InkDim, tracking = 0.22))
             Spacer(Modifier.height(8.dp))
             Text(
                 "+ Divine Favor",
@@ -105,7 +106,7 @@ fun VictoryScreen(boss: BossId, isFinalBoss: Boolean, onContinue: () -> Unit) {
                 fontSize = 18.sp
             )
             Spacer(Modifier.height(2.dp))
-            Text("Full HP restored", style = Zeus.monoLabel(11, Zeus.InkMute, tracking = 0.0))
+            Text(stringResource(app.krafted.zeustacticalswap.R.string.full_hp_restored), style = Zeus.monoLabel(11, Zeus.InkMute, tracking = 0.0))
 
             Spacer(Modifier.height(36.dp))
             GoldButton(

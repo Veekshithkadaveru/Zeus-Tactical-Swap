@@ -32,6 +32,11 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.Spring
+import androidx.compose.ui.graphics.graphicsLayer
 
 /**
  * Shared design system for Zeus Tactical Swap — a single source of truth that mirrors the
@@ -162,12 +167,34 @@ fun GoldButton(
     modifier: Modifier = Modifier,
     enabled: Boolean = true
 ) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+    val scale by animateFloatAsState(
+        targetValue = if (isPressed) 0.96f else 1f,
+        animationSpec = spring(stiffness = Spring.StiffnessMedium),
+        label = "pressScale"
+    )
+    val alpha by animateFloatAsState(
+        targetValue = if (isPressed) 0.85f else 1f,
+        label = "pressAlpha"
+    )
+
     Box(
         modifier = modifier
+            .graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+                this.alpha = alpha
+            }
             .clip(RoundedCornerShape(4.dp))
             .background(Zeus.goldFillBrush, RoundedCornerShape(4.dp))
             .border(1.dp, Zeus.GoldEdge, RoundedCornerShape(4.dp))
-            .clickable(enabled = enabled, onClick = onClick)
+            .clickable(
+                interactionSource = interactionSource,
+                indication = androidx.compose.foundation.LocalIndication.current,
+                enabled = enabled,
+                onClick = onClick
+            )
             .padding(horizontal = 24.dp, vertical = 14.dp),
         contentAlignment = Alignment.Center
     ) {
@@ -189,11 +216,32 @@ fun GhostButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+    val scale by animateFloatAsState(
+        targetValue = if (isPressed) 0.96f else 1f,
+        animationSpec = spring(stiffness = Spring.StiffnessMedium),
+        label = "pressScale"
+    )
+    val alpha by animateFloatAsState(
+        targetValue = if (isPressed) 0.85f else 1f,
+        label = "pressAlpha"
+    )
+
     Box(
         modifier = modifier
+            .graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+                this.alpha = alpha
+            }
             .clip(RoundedCornerShape(4.dp))
             .border(1.dp, Zeus.Gold.copy(alpha = 0.45f), RoundedCornerShape(4.dp))
-            .clickable(onClick = onClick)
+            .clickable(
+                interactionSource = interactionSource,
+                indication = androidx.compose.foundation.LocalIndication.current,
+                onClick = onClick
+            )
             .padding(horizontal = 24.dp, vertical = 14.dp),
         contentAlignment = Alignment.Center
     ) {

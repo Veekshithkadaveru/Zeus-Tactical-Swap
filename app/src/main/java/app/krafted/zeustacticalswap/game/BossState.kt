@@ -30,17 +30,18 @@ data class BossState(
     val petrifyTurnsLeft: Int = 0
 ) {
     val isDefeated: Boolean get() = currentHp <= 0
-    val hpFraction: Float get() = currentHp.toFloat() / maxHp.toFloat()
+    val hpFraction: Float get() = if (maxHp <= 0) 0f else currentHp.toFloat() / maxHp.toFloat()
 
     fun takeDamage(damage: Int): BossState {
         val newHp = maxOf(0, currentHp - damage)
         return copy(
             currentHp = newHp,
-            isEnraged = id == BossId.KRONOS && newHp < maxHp * 0.5f
+            isEnraged = newHp < maxHp * 0.5f
         )
     }
 
     fun applyPoison(damagePerTurn: Int, turns: Int): BossState {
+        if (poisonTurnsLeft > 0) return this
         return copy(poisonDamage = damagePerTurn, poisonTurnsLeft = turns)
     }
 

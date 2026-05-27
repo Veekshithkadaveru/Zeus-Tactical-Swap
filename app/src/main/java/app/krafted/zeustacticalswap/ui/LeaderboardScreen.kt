@@ -30,17 +30,10 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.activity.compose.BackHandler
 import app.krafted.zeustacticalswap.R
 import app.krafted.zeustacticalswap.game.BossId
-
-private val Night = Color(0xFF04050F)
-private val PanelBg = Color(0xCC0B0D18)
-private val PanelBorder = Color(0x40E7B549)
-private val Gold = Color(0xFFE7B549)
-private val GoldBright = Color(0xFFFFE49A)
-private val Ink = Color(0xFFEDE7D6)
-private val InkDim = Color(0xFFB8AE97)
-private val InkMute = Color(0xFF7A745F)
+import app.krafted.zeustacticalswap.ui.theme.Zeus
 
 @Composable
 fun LeaderboardScreen(
@@ -48,10 +41,12 @@ fun LeaderboardScreen(
     onBack: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    BackHandler(onBack = onBack)
+
     Box(
         modifier = modifier
             .fillMaxSize()
-            .background(Night),
+            .background(Zeus.Night),
         contentAlignment = Alignment.Center
     ) {
         Image(
@@ -59,7 +54,7 @@ fun LeaderboardScreen(
             contentDescription = null,
             modifier = Modifier
                 .fillMaxSize()
-                .alpha(0.25f),
+                .alpha(0.45f),
             contentScale = ContentScale.Crop
         )
         Box(
@@ -67,7 +62,7 @@ fun LeaderboardScreen(
                 .fillMaxSize()
                 .background(
                     Brush.verticalGradient(
-                        colors = listOf(Color.Black.copy(alpha = 0.5f), Night.copy(alpha = 0.95f))
+                        colors = listOf(Color.Black.copy(alpha = 0.5f), Zeus.Night.copy(alpha = 0.95f))
                     )
                 )
         )
@@ -83,8 +78,8 @@ fun LeaderboardScreen(
                     .align(Alignment.Start)
                     .height(32.dp),
                 shape = RoundedCornerShape(100.dp),
-                border = BorderStroke(1.dp, Gold.copy(alpha = 0.35f)),
-                colors = ButtonDefaults.outlinedButtonColors(contentColor = InkDim),
+                border = BorderStroke(1.dp, Zeus.Gold.copy(alpha = 0.35f)),
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = Zeus.InkDim),
                 contentPadding = PaddingValues(horizontal = 14.dp, vertical = 4.dp)
             ) {
                 Text(
@@ -100,7 +95,7 @@ fun LeaderboardScreen(
 
             Text(
                 text = "SACRED SCROLLS",
-                color = InkMute,
+                color = Zeus.InkMute,
                 fontWeight = FontWeight.Bold,
                 fontSize = 10.sp,
                 letterSpacing = 4.sp,
@@ -109,7 +104,7 @@ fun LeaderboardScreen(
             Spacer(Modifier.height(8.dp))
             Text(
                 text = "Best Clear Times",
-                color = Gold,
+                color = Zeus.Gold,
                 fontWeight = FontWeight.Black,
                 fontSize = 28.sp,
                 letterSpacing = 1.sp
@@ -129,8 +124,8 @@ fun LeaderboardScreen(
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .background(PanelBg, RoundedCornerShape(12.dp))
-                            .border(1.dp, PanelBorder, RoundedCornerShape(12.dp))
+                            .background(Zeus.BgDeep.copy(alpha = 0.8f), RoundedCornerShape(12.dp))
+                            .border(1.dp, Zeus.PanelBorderInner, RoundedCornerShape(12.dp))
                             .padding(16.dp),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
@@ -138,7 +133,7 @@ fun LeaderboardScreen(
                         Column {
                             Text(
                                 text = "TRIAL ${index + 1}",
-                                color = Gold.copy(alpha = 0.7f),
+                                color = Zeus.Gold.copy(alpha = 0.7f),
                                 fontSize = 10.sp,
                                 fontFamily = FontFamily.Monospace,
                                 fontWeight = FontWeight.Bold,
@@ -147,7 +142,7 @@ fun LeaderboardScreen(
                             Spacer(Modifier.height(4.dp))
                             Text(
                                 text = bossId.displayName,
-                                color = Ink,
+                                color = Zeus.Ink,
                                 fontSize = 16.sp,
                                 fontWeight = FontWeight.Bold
                             )
@@ -155,7 +150,7 @@ fun LeaderboardScreen(
 
                         Text(
                             text = clearTime,
-                            color = GoldBright,
+                            color = Zeus.GoldHi,
                             fontFamily = FontFamily.Monospace,
                             fontSize = 18.sp,
                             fontWeight = FontWeight.Black
@@ -166,7 +161,7 @@ fun LeaderboardScreen(
 
             Text(
                 text = "SWAP TACTICALLY · SHATTER THE RECORD",
-                color = InkMute,
+                color = Zeus.InkMute,
                 fontFamily = FontFamily.Monospace,
                 fontSize = 8.sp,
                 letterSpacing = 2.sp,

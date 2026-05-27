@@ -1,6 +1,7 @@
 package app.krafted.zeustacticalswap.game
 
 import java.util.concurrent.atomic.AtomicInteger
+import kotlin.math.abs
 import kotlin.random.Random
 
 object GridEngine {
@@ -33,9 +34,12 @@ object GridEngine {
         return grid.map { it.toList() }
     }
 
+    /**
+     * Checks if two grid coordinate pairs are orthogonally adjacent.
+     */
     fun isAdjacent(a: Pair<Int, Int>, b: Pair<Int, Int>): Boolean {
-        val dr = Math.abs(a.first - b.first)
-        val dc = Math.abs(a.second - b.second)
+        val dr = abs(a.first - b.first)
+        val dc = abs(a.second - b.second)
         return (dr == 1 && dc == 0) || (dr == 0 && dc == 1)
     }
 
@@ -77,70 +81,63 @@ object GridEngine {
         val newCells: Set<Pair<Int, Int>>
     )
 
+    private fun wouldCreateMatch(grid: List<List<TileState>>, r: Int, c: Int, s: Symbol): Boolean {
+        val size = grid.size
+        fun getSym(row: Int, col: Int): Symbol? {
+            if (row == r && col == c) return s
+            if (row !in 0 until size || col !in 0 until size) return null
+            return grid[row][col].symbol
+        }
+
+        if (getSym(r, c - 2) == s && getSym(r, c - 1) == s) return true
+        if (getSym(r, c - 1) == s && getSym(r, c + 1) == s) return true
+        if (getSym(r, c + 1) == s && getSym(r, c + 2) == s) return true
+
+        if (getSym(r - 2, c) == s && getSym(r - 1, c) == s) return true
+        if (getSym(r - 1, c) == s && getSym(r + 1, c) == s) return true
+        if (getSym(r + 1, c) == s && getSym(r + 2, c) == s) return true
+
+        return false
+    }
+
     fun dropTiles(grid: List<List<TileState>>): DropResult {
         val size = grid.size
         val newGrid = MutableList(size) { r -> MutableList(size) { c -> grid[r][c] } }
         val newCells = mutableSetOf<Pair<Int, Int>>()
+
+        // First, drop down the remaining tiles
         for (c in 0 until size) {
             val remaining = (0 until size)
                 .map { r -> grid[r][c] }
                 .filter { !it.isMatched }
             val emptyCount = size - remaining.size
-            for (r in 0 until size) {
-                if (r < emptyCount) {
-                    newGrid[r][c] = makeTile(randomSymbol(), isNew = true)
-                    newCells.add(Pair(r, c))
-                } else {
-                    newGrid[r][c] = remaining[r - emptyCount].copy(
-                        isNew = false,
-                        isSelected = false,
-                        isMatched = false
-                    )
-                }
+            for (r in emptyCount until size) {
+                newGrid[r][c] = remaining[r - emptyCount].copy(
+                    isNew = false,
+                    isSelected = false,
+                    isMatched = false
+                )
+            }
+        }
+
+        // Now, spawn new tiles at the top, ensuring no immediate matches
+        for (c in 0 until size) {
+            val remaining = (0 until size)
+                .map { r -> grid[r][c] }
+                .filter { !it.isMatched }
+            val emptyCount = size - remaining.size
+            for (r in 0 until emptyCount) {
+                var s: Symbol
+                var attempts = 0
+                do {
+                    s = randomSymbol()
+                    attempts++
+                } while (wouldCreateMatch(newGrid.map { it.toList() }, r, c, s) && attempts < 20)
+
+                newGrid[r][c] = makeTile(s, isNew = true)
+                newCells.add(Pair(r, c))
             }
         }
         return DropResult(newGrid.map { it.toList() }, newCells)
     }
-
-    fun makePlayableGrid(size: Int = 8): List<List<TileState>> {
-        var grid: List<List<TileState>>
-        do {
-            grid = makeGrid(size)
-        } while (!MatchDetector.hasPossibleMoves(grid))
-        return grid
-    }
-
-    fun shufflePlayableGrid(grid: List<List<TileState>>): List<List<TileState>> {
-        val size = grid.size
-        val skulls = grid.map { row -> row.map { it.symbol == Symbol.SKULL } }
-        val nonSkullSymbols = grid.flatten().filter { it.symbol != Symbol.SKULL }.map { it.symbol }
-
-        var attempts = 0
-        var shuffledGrid: List<List<TileState>>
-        do {
-            val shuffledSymbols = nonSkullSymbols.shuffled()
-            var index = 0
-            shuffledGrid = grid.mapIndexed { r, row ->
-                row.mapIndexed { c, tile ->
-                    if (skulls[r][c]) {
-                        tile
-                    } else {
-                        tile.copy(
-                            symbol = shuffledSymbols[index++],
-                            isSelected = false,
-                            isMatched = false,
-                            isNew = false
-                        )
-                    }
-                }
-            }
-            attempts++
-            if (attempts > 100) {
-                return makePlayableGrid(size)
-            }
-        } while (MatchDetector.findAllMatches(shuffledGrid).isNotEmpty() || !MatchDetector.hasPossibleMoves(shuffledGrid))
-
-        return shuffledGrid
-    }
 }
-

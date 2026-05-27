@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -59,45 +60,46 @@ fun BossPanel(boss: BossState, trialNumber: Int = 1, modifier: Modifier = Modifi
             .fillMaxWidth()
             .offset { IntOffset(shakeOffset.value.roundToInt(), 0) }
             .zeusPanel()
-            .padding(start = 12.dp, end = 12.dp, top = 10.dp, bottom = 8.dp)
+            .padding(start = 12.dp, end = 12.dp, top = 8.dp, bottom = 8.dp)
     ) {
+        // Row 1: Trial label + HP
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.Top
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                Text(
-                    text = "BOSS · TRIAL $trialNumber",
-                    style = Zeus.monoLabel(size = 9, color = Zeus.InkMute, tracking = 0.3)
-                )
-                Text(
-                    text = boss.name,
-                    style = Zeus.goldHeading(size = 18)
-                )
-            }
-            Column(
-                horizontalAlignment = Alignment.End,
-                verticalArrangement = Arrangement.spacedBy(4.dp)
-            ) {
-                Text(
-                    text = buildAnnotatedString {
-                        withStyle(Zeus.monoLabel(size = 11, color = Zeus.Ink, tracking = 0.0).toSpanStyle()) {
-                            append("${boss.currentHp}")
-                        }
-                        withStyle(Zeus.monoLabel(size = 11, color = Zeus.InkDim.copy(alpha = 0.6f), tracking = 0.0).toSpanStyle()) {
-                            append(" / ${boss.maxHp}")
-                        }
+            Text(
+                text = "BOSS · TRIAL $trialNumber",
+                style = Zeus.monoLabel(size = 9, color = Zeus.InkMute, tracking = 0.3)
+            )
+            Text(
+                text = buildAnnotatedString {
+                    withStyle(Zeus.monoLabel(size = 11, color = Zeus.Ink, tracking = 0.0).toSpanStyle()) {
+                        append("${boss.currentHp}")
                     }
-                )
-                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                    if (boss.isEnraged) ZeusChip("⚔ RAGE", ChipTone.RAGE)
-                    if (boss.petrifyTurnsLeft > 0) ZeusChip("◈ PETRIFIED", ChipTone.PETRIFY)
-                    if (boss.poisonTurnsLeft > 0) ZeusChip("☠ POISON ${boss.poisonTurnsLeft}", ChipTone.POISON)
+                    withStyle(Zeus.monoLabel(size = 11, color = Zeus.InkDim.copy(alpha = 0.6f), tracking = 0.0).toSpanStyle()) {
+                        append(" / ${boss.maxHp}")
+                    }
                 }
+            )
+        }
+        // Row 2: Boss name
+        Text(
+            text = boss.name,
+            style = Zeus.goldHeading(size = 18)
+        )
+        // Row 3: Status chips (only if any active)
+        val hasChips = boss.isEnraged || boss.petrifyTurnsLeft > 0 || boss.poisonTurnsLeft > 0
+        if (hasChips) {
+            Spacer(Modifier.height(4.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                if (boss.isEnraged) ZeusChip("⚔ RAGE", ChipTone.RAGE)
+                if (boss.petrifyTurnsLeft > 0) ZeusChip("◈ PETRIFIED", ChipTone.PETRIFY)
+                if (boss.poisonTurnsLeft > 0) ZeusChip("☠ POISON ${boss.poisonTurnsLeft}", ChipTone.POISON)
             }
         }
-        Spacer(Modifier.height(8.dp))
+        Spacer(Modifier.height(6.dp))
         HpBar(fraction = animatedFraction, kind = HpKind.BOSS)
     }
 }
+

@@ -14,8 +14,18 @@
 
 # Uncomment this to preserve the line number information for
 # debugging stack traces.
-#-keepattributes SourceFile,LineNumberTable
+-keepattributes SourceFile,LineNumberTable
 
 # If you keep the line number information, uncomment this to
 # hide the original source file name.
 #-renamesourcefileattribute SourceFile
+
+# Room database keep rules
+-keep class * extends androidx.room.RoomDatabase
+-keep class * implements androidx.room.RoomDatabase
+-keep @androidx.room.Entity class * { *; }
+-keep @androidx.room.Dao interface * { *; }
+
+# Keep data models
+-keep class app.krafted.zeustacticalswap.data.db.** { *; }
+-keep class app.krafted.zeustacticalswap.game.** { *; }

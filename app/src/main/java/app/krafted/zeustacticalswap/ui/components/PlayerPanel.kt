@@ -32,6 +32,7 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.material3.Text
+import androidx.compose.ui.res.stringResource
 import app.krafted.zeustacticalswap.game.PlayerState
 import app.krafted.zeustacticalswap.ui.theme.ChargePips
 import app.krafted.zeustacticalswap.ui.theme.ChipTone
@@ -72,7 +73,7 @@ fun PlayerPanel(player: PlayerState, modifier: Modifier = Modifier) {
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(text = "HERO", style = Zeus.monoLabel(size = 9, color = Zeus.InkMute, tracking = 0.3))
+            Text(text = stringResource(app.krafted.zeustacticalswap.R.string.hero), style = Zeus.monoLabel(size = 9, color = Zeus.InkMute, tracking = 0.3))
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 if (player.shieldHp > 0) {
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -108,7 +109,7 @@ fun PlayerPanel(player: PlayerState, modifier: Modifier = Modifier) {
             verticalAlignment = Alignment.CenterVertically
         ) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(text = "CHARGES", style = Zeus.monoLabel(size = 9, color = Zeus.InkMute, tracking = 0.18))
+                Text(text = stringResource(app.krafted.zeustacticalswap.R.string.charges), style = Zeus.monoLabel(size = 9, color = Zeus.InkMute, tracking = 0.18))
                 ChargePips(charges = player.chargeCount)
             }
             AnimatedVisibility(visible = player.criticalActive) {

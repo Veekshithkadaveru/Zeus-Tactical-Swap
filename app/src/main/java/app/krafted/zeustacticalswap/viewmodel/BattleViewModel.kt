@@ -47,6 +47,7 @@ data class BattleUiState(
     val player: PlayerState = PlayerState(),
     val boss: BossState = BossState(),
     val lastActionText: String = "",
+    val lastActionSymbol: Symbol? = null,
     val cascadeCount: Int = 0,
     val isPlayerTurn: Boolean = true,
     val isBossDefeated: Boolean = false,
@@ -59,6 +60,8 @@ data class BattleUiState(
 
 class BattleViewModel(private val repository: BossProgressRepository) : ViewModel() {
 
+    // WARNING: Changing the order of elements in the BossId enum will change
+    // the sequence of stages because bossOrder maps indices to stages.
     private val bossOrder = BossId.values().toList()
     private var battleStartTime: Long = 0L
 
@@ -99,27 +102,30 @@ class BattleViewModel(private val repository: BossProgressRepository) : ViewMode
     }
 
     private fun newBattleState(bossIndex: Int): BattleUiState {
-        val boss = BossState.forBoss(bossOrder[bossIndex])
+        val index = bossIndex.coerceIn(0, bossOrder.size - 1)
+        val boss = BossState.forBoss(bossOrder[index])
         return BattleUiState(
-            grid = GridEngine.makePlayableGrid(),
+            grid = GridEngine.makeGrid(),
             boss = boss,
-            currentBossIndex = bossIndex
+            currentBossIndex = index
         )
     }
 
     fun loadBoss(bossIndex: Int) {
-        val boss = BossState.forBoss(bossOrder[bossIndex])
+        val index = bossIndex.coerceIn(0, bossOrder.size - 1)
+        val boss = BossState.forBoss(bossOrder[index])
         _uiState.update {
             it.copy(
-                grid = GridEngine.makePlayableGrid(),
+                grid = GridEngine.makeGrid(),
                 player = PlayerState(maxHp = it.player.maxHp, currentHp = it.player.maxHp),
                 boss = boss,
-                currentBossIndex = bossIndex,
+                currentBossIndex = index,
                 isBossDefeated = false,
                 isPlayerDefeated = false,
                 phase = TurnPhase.PLAYER_INPUT,
                 isPlayerTurn = true,
                 lastActionText = "Tap two adjacent tiles to swap",
+                lastActionSymbol = null,
                 cascadeCount = 0,
                 matchedCells = emptySet(),
                 newCells = emptySet(),
@@ -132,6 +138,7 @@ class BattleViewModel(private val repository: BossProgressRepository) : ViewMode
         val state = _uiState.value
         if (state.phase != TurnPhase.PLAYER_INPUT || !state.isPlayerTurn) return
         if (state.boss.isDefeated || !state.player.isAlive) return
+        if (row !in state.grid.indices || col !in state.grid[row].indices) return
         if (state.grid[row][col].symbol == Symbol.SKULL) return
 
         val tapped = Pair(row, col)
@@ -193,190 +200,228 @@ class BattleViewModel(private val repository: BossProgressRepository) : ViewMode
 
     private fun runTurn(swappedGrid: List<List<TileState>>) {
         viewModelScope.launch {
-            val cascade = CascadeProcessor.process(swappedGrid)
+            try {
+                val cascade = CascadeProcessor.process(swappedGrid)
 
-            var player = _uiState.value.player
-            var boss = _uiState.value.boss
-            val actionSummary = StringBuilder()
+                var player = _uiState.value.player
+                var boss = _uiState.value.boss
+                val actionSummary = StringBuilder()
 
-            cascade.steps.forEachIndexed { index, step ->
-                val matchedCells = step.matches.flatMap { it.cells }.toSet()
-                _uiState.update {
-                    it.copy(
-                        matchedCells = matchedCells,
-                        cascadeCount = index,
-                        phase = TurnPhase.RESOLVING_MATCHES,
-                        lastActionText = describeMatches(step.matches, step.cascadeMultiplier)
+                cascade.steps.forEachIndexed { index, step ->
+                    val matchedCells = step.matches.flatMap { it.cells }.toSet()
+                    val lastSym = step.matches.lastOrNull()?.symbol
+                    _uiState.update {
+                        it.copy(
+                            matchedCells = matchedCells,
+                            cascadeCount = index,
+                            phase = TurnPhase.RESOLVING_MATCHES,
+                            lastActionText = describeMatches(step.matches, step.cascadeMultiplier),
+                            lastActionSymbol = lastSym
+                        )
+                    }
+                    delay(400L)
+
+                    val results = CombatResolver.resolveAllMatches(
+                        step.matches,
+                        criticalActive = player.criticalActive,
+                        cascadeMultiplier = step.cascadeMultiplier
                     )
-                }
-                delay(400L)
+                    val applied = CombatResolver.applyCombatResults(results, player, boss)
+                    player = applied.first
+                    boss = applied.second
+                    if (actionSummary.isNotEmpty()) actionSummary.append(" → ")
+                    actionSummary.append(summarizeResults(results))
 
-                val results = CombatResolver.resolveAllMatches(
-                    step.matches,
-                    criticalActive = player.criticalActive,
-                    cascadeMultiplier = step.cascadeMultiplier
-                )
-                val applied = CombatResolver.applyCombatResults(results, player, boss)
-                player = applied.first
-                boss = applied.second
-                if (actionSummary.isNotEmpty()) actionSummary.append(" → ")
-                actionSummary.append(summarizeResults(results))
+                    _uiState.update {
+                        it.copy(
+                            grid = step.gridAfter,
+                            matchedCells = emptySet(),
+                            newCells = step.newCells,
+                            player = player,
+                            boss = boss,
+                            cascadeCount = index,
+                            phase = TurnPhase.CASCADE_CHECK,
+                            lastActionSymbol = lastSym
+                        )
+                    }
+                    delay(300L)
 
-                _uiState.update {
-                    it.copy(
-                        grid = step.gridAfter,
-                        matchedCells = emptySet(),
-                        newCells = step.newCells,
-                        player = player,
-                        boss = boss,
-                        cascadeCount = index,
-                        phase = TurnPhase.CASCADE_CHECK
-                    )
-                }
-                delay(300L)
-            }
-
-            _uiState.update {
-                it.copy(
-                    grid = cascade.finalGrid,
-                    newCells = emptySet(),
-                    phase = TurnPhase.APPLYING_COMBAT,
-                    lastActionText = if (actionSummary.isNotEmpty()) actionSummary.toString() else it.lastActionText
-                )
-            }
-            delay(600L)
-
-            if (boss.isDefeated) {
-                onBossDefeated(player, boss)
-                return@launch
-            }
-
-            _uiState.update { it.copy(phase = TurnPhase.BOSS_ATTACK) }
-            val attack = BossAI.calculateAttack(boss, player)
-            player = BossAI.applyAttack(attack, player)
-            _uiState.update {
-                it.copy(player = player, lastActionText = describeAttack(attack))
-            }
-            delay(400L)
-
-            _uiState.update { it.copy(phase = TurnPhase.BOSS_SPECIAL) }
-            val (specialGrid, special) = BossAI.triggerSpecial(boss, _uiState.value.grid)
-            if (special !is BossSpecialResult.None) {
-                _uiState.update {
-                    it.copy(grid = specialGrid, lastActionText = describeSpecial(special))
-                }
-                delay(300L)
-
-                if (special is BossSpecialResult.Cyclone) {
-                    val specialCascade = CascadeProcessor.process(specialGrid)
-                    if (specialCascade.steps.isNotEmpty()) {
-                        val actionSummary = StringBuilder()
-                        specialCascade.steps.forEachIndexed { index, step ->
-                            val matchedCells = step.matches.flatMap { it.cells }.toSet()
-                            _uiState.update {
-                                it.copy(
-                                    matchedCells = matchedCells,
-                                    cascadeCount = index,
-                                    phase = TurnPhase.RESOLVING_MATCHES,
-                                    lastActionText = describeMatches(
-                                        step.matches,
-                                        step.cascadeMultiplier
-                                    )
-                                )
-                            }
-                            delay(400L)
-
-                            val results = CombatResolver.resolveAllMatches(
-                                step.matches,
-                                criticalActive = player.criticalActive,
-                                cascadeMultiplier = step.cascadeMultiplier
-                            )
-                            val applied = CombatResolver.applyCombatResults(results, player, boss)
-                            player = applied.first
-                            boss = applied.second
-                            if (actionSummary.isNotEmpty()) actionSummary.append(" → ")
-                            actionSummary.append(summarizeResults(results))
-
-                            _uiState.update {
-                                it.copy(
-                                    grid = step.gridAfter,
-                                    matchedCells = emptySet(),
-                                    newCells = step.newCells,
-                                    player = player,
-                                    boss = boss,
-                                    cascadeCount = index,
-                                    phase = TurnPhase.CASCADE_CHECK
-                                )
-                            }
-                            delay(300L)
-                        }
-
+                    if (boss.isDefeated) {
                         _uiState.update {
                             it.copy(
-                                grid = specialCascade.finalGrid,
+                                grid = cascade.finalGrid,
                                 newCells = emptySet(),
-                                player = player,
-                                boss = boss,
                                 phase = TurnPhase.APPLYING_COMBAT,
-                                lastActionText = if (actionSummary.isNotEmpty()) actionSummary.toString() else it.lastActionText
+                                lastActionText = if (actionSummary.isNotEmpty()) actionSummary.toString() else it.lastActionText,
+                                lastActionSymbol = lastSym
                             )
                         }
                         delay(600L)
+                        onBossDefeated(player, boss)
+                        return@launch
                     }
                 }
-            } else {
+
+                val finalSym = cascade.steps.flatMap { it.matches }.lastOrNull()?.symbol
+                _uiState.update {
+                    it.copy(
+                        grid = cascade.finalGrid,
+                        newCells = emptySet(),
+                        phase = TurnPhase.APPLYING_COMBAT,
+                        lastActionText = if (actionSummary.isNotEmpty()) actionSummary.toString() else it.lastActionText,
+                        lastActionSymbol = finalSym
+                    )
+                }
+                delay(600L)
+
+                if (boss.isDefeated) {
+                    onBossDefeated(player, boss)
+                    return@launch
+                }
+
+                _uiState.update { it.copy(phase = TurnPhase.BOSS_ATTACK) }
+                val attack = BossAI.calculateAttack(boss, player)
+                player = BossAI.applyAttack(attack, player)
+                _uiState.update {
+                    it.copy(player = player, lastActionText = describeAttack(attack), lastActionSymbol = null)
+                }
+                delay(400L)
+
+                _uiState.update { it.copy(phase = TurnPhase.BOSS_SPECIAL) }
+                val (specialGrid, special) = BossAI.triggerSpecial(boss, _uiState.value.grid)
+                if (special !is BossSpecialResult.None) {
+                    _uiState.update {
+                        it.copy(grid = specialGrid, lastActionText = describeSpecial(special), lastActionSymbol = null)
+                    }
+                    delay(300L)
+
+                    if (special is BossSpecialResult.Cyclone) {
+                        val specialCascade = CascadeProcessor.process(specialGrid)
+                        if (specialCascade.steps.isNotEmpty()) {
+                            val actionSum = StringBuilder()
+                            specialCascade.steps.forEachIndexed { index, step ->
+                                val matchedCells = step.matches.flatMap { it.cells }.toSet()
+                                val lastSym = step.matches.lastOrNull()?.symbol
+                                _uiState.update {
+                                    it.copy(
+                                        matchedCells = matchedCells,
+                                        cascadeCount = index,
+                                        phase = TurnPhase.RESOLVING_MATCHES,
+                                        lastActionText = describeMatches(
+                                            step.matches,
+                                            step.cascadeMultiplier
+                                        ),
+                                        lastActionSymbol = lastSym
+                                    )
+                                }
+                                delay(400L)
+
+                                val results = CombatResolver.resolveAllMatches(
+                                    step.matches,
+                                    criticalActive = player.criticalActive,
+                                    cascadeMultiplier = step.cascadeMultiplier
+                                )
+                                val applied = CombatResolver.applyCombatResults(results, player, boss)
+                                player = applied.first
+                                boss = applied.second
+                                if (actionSum.isNotEmpty()) actionSum.append(" → ")
+                                actionSum.append(summarizeResults(results))
+
+                                _uiState.update {
+                                    it.copy(
+                                        grid = step.gridAfter,
+                                        matchedCells = emptySet(),
+                                        newCells = step.newCells,
+                                        player = player,
+                                        boss = boss,
+                                        cascadeCount = index,
+                                        phase = TurnPhase.CASCADE_CHECK,
+                                        lastActionSymbol = lastSym
+                                    )
+                                }
+                                delay(300L)
+
+                                if (boss.isDefeated) {
+                                    _uiState.update {
+                                        it.copy(
+                                            grid = specialCascade.finalGrid,
+                                            newCells = emptySet(),
+                                            player = player,
+                                            boss = boss,
+                                            phase = TurnPhase.APPLYING_COMBAT,
+                                            lastActionText = if (actionSum.isNotEmpty()) actionSum.toString() else it.lastActionText,
+                                            lastActionSymbol = lastSym
+                                        )
+                                    }
+                                    delay(600L)
+                                    onBossDefeated(player, boss)
+                                    return@launch
+                                }
+                            }
+
+                            val finalSpecialSym = specialCascade.steps.flatMap { it.matches }.lastOrNull()?.symbol
+                            _uiState.update {
+                                it.copy(
+                                    grid = specialCascade.finalGrid,
+                                    newCells = emptySet(),
+                                    player = player,
+                                    boss = boss,
+                                    phase = TurnPhase.APPLYING_COMBAT,
+                                    lastActionText = if (actionSum.isNotEmpty()) actionSum.toString() else it.lastActionText,
+                                    lastActionSymbol = finalSpecialSym
+                                )
+                            }
+                            delay(600L)
+                        }
+                    }
+                } else {
+                    delay(300L)
+                }
+
+                _uiState.update { it.copy(phase = TurnPhase.STATUS_TICK) }
+                val (tickedBoss, poisonDamage) = boss.tickStatusEffects()
+                boss = tickedBoss.advanceTurn()
+                player = player.onTurnEnd()
+                _uiState.update {
+                    it.copy(
+                        player = player,
+                        boss = boss,
+                        lastActionText = if (poisonDamage > 0) "Poison deals $poisonDamage" else it.lastActionText,
+                        lastActionSymbol = if (poisonDamage > 0) Symbol.AMPHORA else null
+                    )
+                }
                 delay(300L)
-            }
 
-            _uiState.update { it.copy(phase = TurnPhase.STATUS_TICK) }
-            val (tickedBoss, poisonDamage) = boss.tickStatusEffects()
-            boss = tickedBoss.advanceTurn()
-            player = player.onTurnEnd()
-            _uiState.update {
-                it.copy(
-                    player = player,
-                    boss = boss,
-                    lastActionText = if (poisonDamage > 0) "Poison deals $poisonDamage" else it.lastActionText
-                )
-            }
-            delay(300L)
+                _uiState.update { it.copy(phase = TurnPhase.CHECK_VICTORY) }
+                if (boss.isDefeated) {
+                    onBossDefeated(player, boss)
+                    return@launch
+                }
 
-            _uiState.update { it.copy(phase = TurnPhase.CHECK_VICTORY) }
-            if (boss.isDefeated) {
-                onBossDefeated(player, boss)
-                return@launch
-            }
+                _uiState.update { it.copy(phase = TurnPhase.CHECK_DEFEAT) }
+                if (!player.isAlive) {
+                    _uiState.update {
+                        it.copy(
+                            isPlayerDefeated = true,
+                            isPlayerTurn = false,
+                            phase = TurnPhase.CHECK_DEFEAT
+                        )
+                    }
+                    return@launch
+                }
 
-            _uiState.update { it.copy(phase = TurnPhase.CHECK_DEFEAT) }
-            if (!player.isAlive) {
+                _uiState.update {
+                    it.copy(isPlayerTurn = true, phase = TurnPhase.PLAYER_INPUT)
+                }
+            } catch (e: Exception) {
+                android.util.Log.e("BattleViewModel", "Error in runTurn machine", e)
                 _uiState.update {
                     it.copy(
-                        isPlayerDefeated = true,
-                        isPlayerTurn = false,
-                        phase = TurnPhase.CHECK_DEFEAT
+                        isPlayerTurn = true,
+                        phase = TurnPhase.PLAYER_INPUT,
+                        lastActionText = "An error occurred. Try again."
                     )
                 }
-                return@launch
-            }
-
-            var currentGrid = _uiState.value.grid
-            while (!MatchDetector.hasPossibleMoves(currentGrid) && player.isAlive && !boss.isDefeated) {
-                _uiState.update {
-                    it.copy(lastActionText = "No moves left! Shuffling grid...")
-                }
-                delay(1200L)
-                currentGrid = GridEngine.shufflePlayableGrid(currentGrid)
-                _uiState.update {
-                    it.copy(
-                        grid = currentGrid,
-                        lastActionText = "Grid shuffled!"
-                    )
-                }
-                delay(800L)
-            }
-
-            _uiState.update {
-                it.copy(isPlayerTurn = true, phase = TurnPhase.PLAYER_INPUT)
             }
         }
     }
@@ -406,8 +451,8 @@ class BattleViewModel(private val repository: BossProgressRepository) : ViewMode
         if (nextIndex >= bossOrder.size) return
         val nextBoss = BossState.forBoss(bossOrder[nextIndex])
         _uiState.update {
-            BattleUiState(
-                grid = GridEngine.makePlayableGrid(),
+            it.copy(
+                grid = GridEngine.makeGrid(),
                 player = it.player.copy(
                     currentHp = it.player.maxHp,
                     shieldHp = 0,
@@ -417,7 +462,16 @@ class BattleViewModel(private val repository: BossProgressRepository) : ViewMode
                 ),
                 boss = nextBoss,
                 currentBossIndex = nextIndex,
-                defeatedBosses = it.defeatedBosses
+                isBossDefeated = false,
+                isPlayerDefeated = false,
+                phase = TurnPhase.PLAYER_INPUT,
+                isPlayerTurn = true,
+                lastActionText = "Tap two adjacent tiles to swap",
+                lastActionSymbol = null,
+                cascadeCount = 0,
+                matchedCells = emptySet(),
+                newCells = emptySet(),
+                swappingPair = null
             )
         }
     }
@@ -441,12 +495,16 @@ class BattleViewModel(private val repository: BossProgressRepository) : ViewMode
     }
 
     private fun clearSelection(grid: List<List<TileState>>): List<List<TileState>> {
-        return grid.map { row -> row.map { if (it.isSelected) it.copy(isSelected = false) else it } }
+        return grid.map { row ->
+            row.map { tile ->
+                if (tile.isSelected) tile.copy(isSelected = false) else tile
+            }
+        }
     }
 
     private fun describeMatches(matches: List<Match>, multiplier: Float): String {
         val labels = matches.joinToString(", ") { "${it.symbol.label} x${it.cells.size}" }
-        return if (multiplier > 1.0f) "$labels (${multiplier}x cascade)" else labels
+        return if (multiplier > 1.0f) "$labels (${String.format("%.1f", multiplier)}x cascade)" else labels
     }
 
     private fun summarizeResults(results: List<CombatResult>): String {

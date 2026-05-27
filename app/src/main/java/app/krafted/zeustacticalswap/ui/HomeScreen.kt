@@ -20,6 +20,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
+import androidx.compose.ui.res.stringResource
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -38,6 +39,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.contentDescription
 import app.krafted.zeustacticalswap.game.BossId
 import app.krafted.zeustacticalswap.ui.components.RulesDialog
 import app.krafted.zeustacticalswap.ui.theme.ChipTone
@@ -74,10 +77,13 @@ fun HomeScreen(
         RulesDialog(onDismiss = { showRules = false })
     }
 
-    fun lockState(index: Int): LockState = when {
-        defeatedBosses.contains(index) -> LockState.COMPLETE
-        index == 0 || defeatedBosses.contains(index - 1) -> LockState.OPEN
-        else -> LockState.LOCKED
+    fun lockState(index: Int): LockState {
+        if (index !in bosses.indices) return LockState.LOCKED
+        return when {
+            defeatedBosses.contains(index) -> LockState.COMPLETE
+            index == 0 || defeatedBosses.contains(index - 1) -> LockState.OPEN
+            else -> LockState.LOCKED
+        }
     }
 
     Box(Modifier
@@ -130,11 +136,12 @@ fun HomeScreen(
             }
             Spacer(Modifier.height(18.dp))
             Text(
-                "HOME · LEADERBOARD · ABOUT",
-                style = Zeus.monoLabel(9, Zeus.InkMute, tracking = 0.3),
+                "LEADERBOARD",
+                style = Zeus.monoLabel(11, Zeus.Gold, tracking = 0.3),
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clickable { onLeaderboardClick() },
+                    .clickable { onLeaderboardClick() }
+                    .padding(vertical = 8.dp),
                 textAlign = TextAlign.Center
             )
         }
@@ -172,6 +179,7 @@ private fun Header(
                     .size(36.dp)
                     .clip(CircleShape)
                     .border(1.dp, Zeus.Gold.copy(alpha = 0.45f), CircleShape)
+                    .semantics { contentDescription = "Rules Button" }
                     .clickable { onRulesClick() },
                 contentAlignment = Alignment.Center
             ) {
@@ -182,6 +190,7 @@ private fun Header(
                     .size(36.dp)
                     .clip(CircleShape)
                     .border(1.dp, Zeus.Gold.copy(alpha = 0.45f), CircleShape)
+                    .semantics { contentDescription = "Leaderboard Button" }
                     .clickable { onLeaderboardClick() },
                 contentAlignment = Alignment.Center
             ) {
@@ -209,7 +218,7 @@ private fun RunSummary(
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             Column {
-                Text("CURRENT RUN", style = Zeus.monoLabel(9, Zeus.InkMute, tracking = 0.2))
+                Text(stringResource(app.krafted.zeustacticalswap.R.string.current_run), style = Zeus.monoLabel(9, Zeus.InkMute, tracking = 0.2))
                 Spacer(Modifier.height(4.dp))
                 Row(verticalAlignment = Alignment.Bottom) {
                     Text(
@@ -218,11 +227,11 @@ private fun RunSummary(
                         fontWeight = FontWeight.Bold,
                         fontSize = 16.sp
                     )
-                    Text("trials cleared", color = Zeus.InkMute, fontSize = 14.sp)
+                    Text(stringResource(app.krafted.zeustacticalswap.R.string.trials_cleared), color = Zeus.InkMute, fontSize = 14.sp)
                 }
             }
             Column(horizontalAlignment = Alignment.End) {
-                Text("HERO HP", style = Zeus.monoLabel(9, Zeus.InkMute, tracking = 0.2))
+                Text(stringResource(app.krafted.zeustacticalswap.R.string.hero_hp), style = Zeus.monoLabel(9, Zeus.InkMute, tracking = 0.2))
                 Spacer(Modifier.height(4.dp))
                 Text(
                     "$currentHp/$maxHp",
@@ -241,7 +250,7 @@ private fun RunSummary(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text("BEST CLEAR", style = Zeus.monoLabel(10, Zeus.InkMute, tracking = 0.18))
+                Text(stringResource(app.krafted.zeustacticalswap.R.string.best_clear), style = Zeus.monoLabel(10, Zeus.InkMute, tracking = 0.18))
                 Text(bestClearTime, style = Zeus.monoLabel(11, Zeus.Ink, tracking = 0.0))
             }
         }
